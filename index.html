@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Migrator</title>
+<style>
+  body { font-family: system-ui, sans-serif; background: #1e2430; color: #eee; margin: 0; padding: 16px; }
+  .box { max-width: 640px; margin: 0 auto; background: #2a3242; border-radius: 12px; padding: 20px; }
+  h1 { margin-top: 0; }
+  .colors { display: flex; gap: 12px; margin: 12px 0; }
+  .color { width: 56px; height: 56px; border-radius: 50%; cursor: pointer; border: 3px solid transparent; }
+  .color.sel { border-color: #fff; }
+  input { padding: 8px; font-size: 16px; border-radius: 6px; border: none; width: 200px; }
+  button { padding: 10px 14px; margin: 4px; font-size: 15px; border: none; border-radius: 8px; background: #4a7bd0; color: #fff; cursor: pointer; }
+  button:hover { background: #5b8ce0; }
+  .head { display: flex; align-items: center; gap: 14px; }
+  .avatar { width: 64px; height: 64px; border-radius: 50%; }
+  .stats { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin: 14px 0; }
+  .log { background: #1e2430; border-radius: 8px; padding: 10px; height: 160px; overflow-y: auto; font-size: 14px; }
+  .err { color: #f88; }
+  #dead { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.85); z-index: 10;
+          flex-direction: column; align-items: center; justify-content: center; text-align: center; }
+  #dead h1 { font-size: clamp(64px, 18vw, 160px); color: #e11; margin: 0; letter-spacing: 6px;
+             text-shadow: 0 0 30px #f00; animation: pop .6s ease-out; }
+  #choice { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.6); z-index: 5;
+            align-items: center; justify-content: center; padding: 16px; }
+  #choice .box { width: 100%; animation: pop .3s ease-out; }
+  .bar { grid-column: 1 / -1; display: grid; grid-template-columns: 120px 1fr 32px; align-items: center; gap: 8px; }
+  .track { height: 14px; background: #1e2430; border-radius: 7px; overflow: hidden; }
+  .fill { height: 100%; border-radius: 7px; transition: width .4s, background .4s; }
+  .map { position: relative; aspect-ratio: 16 / 13; background: #3c4a3a; border-radius: 10px; overflow: hidden; margin-bottom: 8px; }
+  .road { position: absolute; background: #5a5f66; }
+  .road.h { left: 0; right: 0; height: 9%; transform: translateY(-50%); border-block: 2px dashed #777; }
+  .road.v { top: 0; bottom: 0; width: 7%; transform: translateX(-50%); }
+  .park { position: absolute; left: 78%; top: 70%; width: 20%; height: 27%; background: #4f7a45; border-radius: 40%; }
+  .place { position: absolute; transform: translate(-50%, -50%); margin: 0; padding: 6px 8px; min-width: 84px;
+           display: flex; flex-direction: column; align-items: center; background: #2a3242ee; border: 2px solid #4a7bd0;
+           border-radius: 10px; font-size: 12px; line-height: 1.2; z-index: 2; }
+  .place span { font-size: 24px; }
+  .place small { font-size: 10px; opacity: .7; }
+  .place.closed { opacity: .45; }
+  .place.locked { opacity: .55; border-color: #888; filter: grayscale(1); }
+  .night { position: absolute; inset: 0; background: #0a1030; opacity: 0; pointer-events: none; z-index: 1; transition: opacity .6s; }
+  .place:hover { background: #4a7bd0; transform: translate(-50%, -50%) scale(1.08); }
+  .player { position: absolute; width: 30px; height: 30px; border-radius: 50%; border: 2px solid #fff; z-index: 3;
+            transform: translate(-50%, 20%); transition: left .5s ease-in-out, top .5s ease-in-out; pointer-events: none;
+            box-shadow: 0 0 8px #000; }
+  @media (max-width: 480px) { .place { min-width: 0; font-size: 9px; padding: 3px; } .place span { font-size: 18px; } .place small { display: none; } }
+  @keyframes pop { from { transform: scale(3); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+</style>
+</head>
+<body>
+<div class="box" id="start">
+  <h1>Migrator</h1>
+  <p>Tu viens d'arriver en ville. Tu ne connais personne…</p>
+  <p>Comment t'appelles-tu ?</p>
+  <input id="name" value="Sam" maxlength="16">
+  <p>Choisis ta couleur :</p>
+  <div class="colors" id="colors"></div>
+  <p class="err" id="err"></p>
+  <button onclick="newGame()">Commencer</button>
+  <button id="continue" onclick="continueGame()" style="display:none"></button>
+</div>
+
+<div class="box" id="game" style="display:none">
+  <div class="head"><div class="avatar" id="avatar"></div><h2 id="title"></h2><button id="mute" onclick="toggleMusic()" style="margin-left:auto">🔊</button></div>
+  <div class="stats" id="stats"></div>
+  <h3>🗺️ La ville</h3>
+  <div class="map" id="map">
+    <div class="road h" style="top:34%"></div>
+    <div class="road h" style="top:66%"></div>
+    <div class="road v" style="left:25%"></div>
+    <div class="road v" style="left:50%"></div>
+    <div class="road v" style="left:75%"></div>
+    <div class="park"></div>
+    <div class="night" id="night"></div>
+    <div class="player" id="player"></div>
+  </div>
+  <h3>Journal</h3>
+  <div class="log" id="log"></div>
+</div>
+
+<div id="dead">
+  <h1 id="endTitle">MORT</h1>
+  <p id="deadMsg"></p>
+  <button onclick="location.reload()">Rejouer</button>
+</div>
+
+<div id="choice">
+  <div class="box">
+    <h2>⚡ Événement</h2>
+    <p id="choiceTxt"></p>
+    <div id="choiceBtns"></div>
+  </div>
+</div>
+
+<script>
+const COLORS = ['#111111', '#facc15', '#7b4a2a'];
+let color = COLORS[0];
+const AVATAR = {
+  '#111111': 'perso/14.png',
+  '#facc15': 'perso/rond jaune.webp',
+  '#7b4a2a': 'perso/8e1c08e031d3b42e218d8b6df5069e.webp'
+};
+const avatarBg = c => `${c} url('${AVATAR[c]}') center / cover`;
+const s = { sante: 70, moral: 50, argent: 50, langue: 1, papiers: 0, reseau: 0, tel: 40, jour: 1, heure: 8, pos: 0 };
+const PAPIERS = ['Aucun', 'Dossier déposé', 'Récépissé', 'Titre de séjour'];
+let name = 'Sam';
+
+const cBox = document.getElementById('colors');
+COLORS.forEach((c, i) => {
+  const d = document.createElement('div');
+  d.className = 'color' + (i === 0 ? ' sel' : '');
+  d.style.background = avatarBg(c);
+  d.onclick = () => { color = c; document.querySelectorAll('.color').forEach(e => e.classList.remove('sel')); d.classList.add('sel'); setBg(); };
+  cBox.appendChild(d);
+});
+
+const BG = {
+  '#111111': 'fonds/geo12ouvkibera-retoucheok.webp',
+  '#facc15': 'fonds/riziere-bali-indonesie.avif',
+  '#7b4a2a': 'fonds/683466.ori.jpg'
+};
+// Fond pendant la partie (après « Commencer ») ; sinon on garde celui de l'accueil
+const GAME_BG = {
+  '#111111': 'fonds/rue-noir.jpg',
+  '#facc15': 'fonds/rue-jaune.webp',
+  '#7b4a2a': 'fonds/souk-marron.jpg'
+};
+const MUSIC = {
+  '#111111': 'musique/noir.mp3',
+  '#facc15': 'musique/jaune.mp3',
+  '#7b4a2a': 'musique/marron.mp3'
+};
+const music = new Audio();
+music.loop = true;
+music.volume = 0.4;
+function toggleMusic() {
+  music.muted = !music.muted;
+  document.getElementById('mute').textContent = music.muted ? '🔇' : '🔊';
+}
+
+function setBg(inGame) {
+  const img = (inGame && GAME_BG[color]) || BG[color];
+  document.body.style.background = img ? `#1e2430 url('${img}') center / cover fixed` : '';
+}
+
+setBg();
+
+function start() {
+  const n = document.getElementById('name').value.trim();
+  if (!/^[\p{L} \-']{2,16}$/u.test(n)) { document.getElementById('err').textContent = 'Prénom : 2 à 16 lettres.'; return; }
+  name = n;
+  launch();
+  log(`Bienvenue ${name}. Premier jour en ville, il est 8 h.`);
+  endTurn();
+}
+
+function launch() {
+  document.getElementById('start').style.display = 'none';
+  document.getElementById('game').style.display = 'block';
+  document.getElementById('avatar').style.background = avatarBg(color);
+  player.style.background = avatarBg(color);
+  setBg(true);
+  music.src = MUSIC[color];
+  music.play().catch(() => {});
+}
+
+const clamp = v => Math.max(0, Math.min(100, v));
+const rnd = (a, b) => a + Math.floor(Math.random() * (b - a + 1));
+let over = false;
+
+// ---- Sons d'action (générés, pas de fichier) ----
+let actx;
+function sfx(type) {
+  if (music.muted) return;
+  actx = actx || new (window.AudioContext || window.webkitAudioContext)();
+  const notes = {
+    coin:  [[988, .08], [1319, .15]],
+    good:  [[523, .1], [659, .1], [784, .2]],
+    bad:   [[220, .15], [165, .3]],
+    ring:  [[880, .1], [0, .05], [880, .1]],
+    sleep: [[392, .25], [330, .35]],
+    event: [[660, .1], [990, .15]],
+    win:   [[523, .15], [659, .15], [784, .15], [1047, .4]],
+    lose:  [[196, .3], [147, .3], [98, .6]]
+  }[type];
+  let t = actx.currentTime;
+  for (const [f, d] of notes) {
+    if (f) {
+      const o = actx.createOscillator(), g = actx.createGain();
+      o.type = type === 'coin' ? 'square' : 'triangle';
+      o.frequency.value = f;
+      g.gain.setValueAtTime(.15, t);
+      g.gain.exponentialRampToValueAtTime(.001, t + d);
+      o.connect(g).connect(actx.destination);
+      o.start(t); o.stop(t + d);
+    }
+    t += d;
+  }
+}
+
+// ---- Événements surprises au réveil ----
+const EVENTS = [
+  { txt: () => `Un bénévole offre un repas chaud à ${name}.`, fx: () => { s.sante += 10; s.moral += 5; }, snd: 'good' },
+  { txt: () => `Le téléphone de ${name} a été volé dans la nuit !`, fx: () => { s.tel = 0; s.moral -= 15; }, snd: 'bad' },
+  { txt: () => 'Le propriétaire réclame le loyer : -20 €.', fx: () => { s.argent -= 20; }, snd: 'bad' },
+  { txt: () => 'Tu trouves un billet de 10 € par terre.', fx: () => { s.argent += 10; s.moral += 3; }, snd: 'coin' },
+  { txt: () => 'Nuit glaciale dans le foyer, tu dors mal.', fx: () => { s.sante -= 12; }, snd: 'bad' },
+  { txt: () => 'Un voisin t\'apprend quelques mots en échange d\'un coup de main.', fx: () => { if (s.langue < 10) s.langue++; }, snd: 'good' },
+  { choice: true, txt: () => 'Un inconnu te propose un travail au noir bien payé (60 €). Mais c\'est risqué…',
+    opts: [
+      ['Accepter', () => {
+        if (Math.random() < 0.35) { s.moral -= 25; s.papiers = Math.max(0, s.papiers - 1); sfx('bad'); return 'Contrôle de police ! Ton dossier recule.'; }
+        s.argent += 60; s.sante -= 15; sfx('coin'); return 'Tu as été payé·e 60 €. Épuisant, mais ça aide.';
+      }],
+      ['Refuser', () => { s.moral += 2; return 'Tu préfères ne pas prendre de risque.'; }]
+    ] },
+  { choice: true, txt: () => 'Un autre migrant, sans rien à manger, te demande de l\'aide.',
+    opts: [
+      ['Partager (10 €)', () => { if (s.argent < 10) return 'Tu n\'as même pas 10 €…'; s.argent -= 10; s.reseau++; s.moral += 10; sfx('good'); return 'Il te remercie. Un ami de plus.'; }],
+      ['Passer ton chemin', () => { s.moral -= 5; return 'Tu y repenses toute la journée.'; }]
+    ] },
+  { choice: true, txt: () => 'Contrôle d\'identité dans la rue !',
+    opts: [
+      ['Montrer tes papiers', () => {
+        if (s.papiers >= 2) { sfx('good'); return 'Le récépissé suffit, tu repars tranquille.'; }
+        s.moral -= 15; s.sante -= 5; sfx('bad'); return 'Tu passes 4 h au commissariat…';
+      }],
+      ['Courir', () => {
+        if (Math.random() < 0.5) { s.sante -= 10; return 'Tu t\'en sors, mais tu t\'es fait mal.'; }
+        s.moral -= 25; s.papiers = Math.max(0, s.papiers - 1); sfx('bad'); return 'Rattrapé·e. Ton dossier recule.';
+      }]
+    ] },
+  { choice: true, txt: () => 'Ta famille a besoin d\'argent au pays.',
+    opts: [
+      ['Envoyer 25 €', () => { if (s.argent < 25) return 'Tu n\'as pas assez… ça te pèse.'; s.argent -= 25; s.moral += 12; sfx('coin'); return 'Ta famille t\'appelle pour te remercier.'; }],
+      ['Garder ton argent', () => { s.moral -= 10; return 'Tu culpabilises.'; }]
+    ] }
+];
+
+function randomEvent() {
+  if (Math.random() > 0.5) return;
+  const e = EVENTS[rnd(0, EVENTS.length - 1)];
+  if (e.choice) return askChoice(e);
+  e.fx(); sfx(e.snd); log('⚡ ' + e.txt());
+}
+
+function askChoice(e) {
+  sfx('event');
+  document.getElementById('choiceTxt').textContent = e.txt();
+  const box = document.getElementById('choiceBtns');
+  box.innerHTML = '';
+  for (const [label, fn] of e.opts) {
+    const b = document.createElement('button');
+    b.textContent = label;
+    b.onclick = () => {
+      document.getElementById('choice').style.display = 'none';
+      log('⚡ ' + fn());
+      endTurn();
+    };
+    box.appendChild(b);
+  }
+  document.getElementById('choice').style.display = 'flex';
+}
+
+// ---- Écrans de fin ----
+function endScreen(title, col, msg, snd) {
+  over = true;
+  const h = document.getElementById('endTitle');
+  h.textContent = title; h.style.color = col; h.style.textShadow = `0 0 30px ${col}`;
+  document.getElementById('deadMsg').textContent = msg;
+  document.getElementById('dead').style.display = 'flex';
+  music.pause(); sfx(snd);
+}
+
+// ---- Carte de la ville ----
+// o/f = heures d'ouverture/fermeture, d = durée de l'action (h), lock = condition pour débloquer
+const PLACES = [
+  { a: 'sleep', ico: '🏚️', nom: 'Foyer',        x: 12, y: 18, o: 0,  f: 24, d: 0 },
+  { a: 'lang',  ico: '🏫', nom: 'École',        x: 37, y: 18, o: 9,  f: 18, d: 2 },
+  { a: 'biblio',ico: '📚', nom: 'Bibliothèque', x: 63, y: 18, o: 10, f: 19, d: 2 },
+  { a: 'pref',  ico: '🏛️', nom: 'Préfecture',   x: 88, y: 18, o: 9,  f: 16, d: 3 },
+  { a: 'appart',ico: '🏠', nom: 'Appartement',  x: 12, y: 50, o: 0,  f: 24, d: 0,
+    lock: () => !s.appart && s.argent < 150, lockTxt: '150 € pour louer' },
+  { a: 'culte', ico: '🕌', nom: 'Lieu de culte',x: 37, y: 50, o: 6,  f: 21, d: 1 },
+  { a: 'hosto', ico: '🏥', nom: 'Hôpital',      x: 63, y: 50, o: 0,  f: 24, d: 2 },
+  { a: 'usine', ico: '🏭', nom: 'Usine',        x: 88, y: 50, o: 7,  f: 20, d: 6,
+    lock: () => s.papiers < 2, lockTxt: 'Récépissé requis' },
+  { a: 'job',   ico: '🛒', nom: 'Marché',       x: 12, y: 82, o: 6,  f: 14, d: 4 },
+  { a: 'assoc', ico: '🤝', nom: 'Association',  x: 37, y: 82, o: 10, f: 19, d: 2 },
+  { a: 'call',  ico: '📞', nom: 'Parc (wifi)',  x: 63, y: 82, o: 0,  f: 24, d: 1 }
+];
+const FIN_JOURNEE = 23;
+let moving = false;
+const map = document.getElementById('map');
+const player = document.getElementById('player');
+const placeBtns = PLACES.map((p, i) => {
+  const b = document.createElement('button');
+  b.className = 'place';
+  b.style.left = p.x + '%'; b.style.top = p.y + '%';
+  b.onclick = () => goTo(i);
+  map.appendChild(b);
+  return b;
+});
+function placePlayer(i) { player.style.left = PLACES[i].x + '%'; player.style.top = PLACES[i].y + '%'; }
+
+function goTo(i) {
+  if (over || moving) return;
+  const p = PLACES[i];
+  if (p.lock && p.lock()) return log(`🔒 ${p.nom} : ${p.lockTxt}.`);
+  const trajet = i === s.pos ? 0 : 1;
+  const arrivee = s.heure + trajet;
+  const dort = p.a === 'sleep' || (p.a === 'appart' && s.appart);
+  if (!dort) {
+    if (arrivee + p.d > FIN_JOURNEE) return log('Il est trop tard. Rentre dormir.');
+    if (arrivee < p.o || arrivee + p.d > p.f) return log(`${p.nom} est fermé à cette heure (ouvert ${p.o} h – ${p.f} h).`);
+  }
+  moving = true;
+  s.pos = i;
+  placePlayer(i);
+  setTimeout(() => {
+    moving = false;
+    s.heure = arrivee;
+    const avant = s.heure;
+    act(p.a);
+    // l'action a eu lieu si le journal ne l'a pas refusée : on avance l'horloge
+    if (s.heure === avant && !dort && !refus) s.heure += p.d;
+    refus = false;
+    endTurn();
+  }, trajet ? 500 : 0);
+}
+
+// ---- Actions ----
+let refus = false;
+const non = t => { refus = true; log(t); };
+
+function dormir(appart) {
+  s.jour++; s.heure = 8; s.tel = 100;
+  if (appart) {
+    s.sante += 35; s.moral += 8; s.argent -= 15;
+    log('Une vraie nuit au calme dans ton appartement (loyer 15 €).');
+  } else {
+    s.sante += 20; s.argent -= 8;
+  }
+  sfx('sleep');
+  if (s.argent < 0) { s.argent = 0; s.sante -= 10; s.moral -= 10; log('Pas assez pour manger… nuit difficile.'); }
+  log(`— Jour ${s.jour} —`);
+  s.sante = clamp(s.sante); s.moral = clamp(s.moral);
+  randomEvent();
+}
+
+function act(a) {
+  if (over) return;
+  switch (a) {
+    case 'job': {
+      if (s.sante < 15) return non(`${name} est trop épuisé·e pour travailler.`);
+      const g = rnd(10, 20) + s.langue * 3;
+      s.argent += g; s.sante -= 12; s.moral += 3; sfx('coin');
+      log(`${name} a trouvé un petit boulot sur un marché (+${g} €).`); break;
+    }
+    case 'usine': {
+      if (s.sante < 25) return non(`${name} est trop épuisé·e pour une journée à l'usine.`);
+      const g = rnd(45, 65);
+      s.argent += g; s.sante -= 20; s.moral += 6; sfx('coin');
+      log(`Journée à l'usine, un vrai contrat ! (+${g} €)`); break;
+    }
+    case 'lang':
+      if (s.argent < 5) return non('Pas assez d\'argent pour le cours (5 €).');
+      s.argent -= 5; s.sante -= 5;
+      if (Math.random() < 0.4 && s.langue < 10) { s.langue++; sfx('good'); log(`${name} progresse en langue ! Niveau ${s.langue}.`); }
+      else log(`${name} a suivi un cours. Ça rentre doucement.`);
+      break;
+    case 'biblio':
+      s.moral += 2;
+      if (Math.random() < 0.2 && s.langue < 10) { s.langue++; sfx('good'); log(`À force de lire, ${name} progresse ! Langue niv. ${s.langue}.`); }
+      else log('Deux heures à la bibliothèque, au chaud et gratuitement.');
+      break;
+    case 'pref':
+      if (s.prefJour === s.jour) return non('La préfecture t\'a déjà reçu·e aujourd\'hui. Reviens demain.');
+      s.prefJour = s.jour;
+      s.sante -= 8;
+      // Chaque étape est plus dure que la précédente ; langue et réseau aident
+      if (Math.random() < 0.05 + s.langue * 0.025 + s.reseau * 0.02 - s.papiers * 0.04) { s.papiers++; s.moral += 15; sfx('good'); log(`Préfecture : avancée ! ${PAPIERS[s.papiers]}.`); }
+      else { s.moral -= 8; sfx('bad'); log('Préfecture : 3 h d\'attente… « Revenez avec un justificatif ».'); }
+      break;
+    case 'assoc':
+      s.reseau++; s.moral += 6; s.sante += 5; sfx('good');
+      log(`${name} rencontre des bénévoles. Réseau : ${s.reseau}.`); break;
+    case 'culte':
+      s.moral += 10; sfx('good');
+      log(`${name} trouve un peu de paix et de chaleur humaine.`); break;
+    case 'hosto':
+      if (s.argent < 20) return non('Les soins coûtent 20 €. Tu n\'as pas assez.');
+      s.argent -= 20; s.sante += 30; sfx('good');
+      log(`Un médecin soigne ${name} (-20 €, +30 santé).`); break;
+    case 'call':
+      if (s.tel < 10) return non('Plus assez de batterie. Dors pour recharger.');
+      s.tel -= 15; s.moral += 12; sfx('ring');
+      log(`Message de la famille : « Comment tu vas, ${name} ? »`); break;
+    case 'appart':
+      if (!s.appart) { s.argent -= 150; s.appart = true; s.moral += 20; sfx('win'); log('🏠 Tu as loué un appartement ! Tu y dormiras mieux (loyer 15 €/nuit).'); break; }
+      dormir(true); break;
+    case 'sleep':
+      dormir(false); break;
+  }
+}
+
+// ---- Fin de tour : bornes, affichage, fins de partie, sauvegarde ----
+function endTurn() {
+  s.sante = clamp(s.sante); s.moral = clamp(s.moral); s.argent = Math.max(0, s.argent);
+  render();
+  if (over) return;
+  if (s.sante <= 0) {
+    log(`${name} s'effondre et est emmené·e aux urgences. Fin de partie.`);
+    endScreen('MORT', '#e11', `${name} n'a pas survécu au jour ${s.jour}.`, 'lose');
+  } else if (s.moral <= 0) {
+    log(`${name} n'en peut plus et abandonne.`);
+    endScreen('ABANDON', '#9aa', `Le moral à zéro, ${name} rentre au pays au jour ${s.jour}.`, 'lose');
+  } else if (s.papiers >= 3) {
+    log(`🎉 ${name} a obtenu son titre de séjour en ${s.jour} jours !`);
+    endScreen('VICTOIRE', '#2e2', `${name} a obtenu son titre de séjour en ${s.jour} jours !`, 'win');
+  }
+  if (over) clearSave(); else save();
+}
+
+// ---- Sauvegarde (dans ce navigateur) ----
+const SAVE_KEY = 'migrator-save';
+function save() {
+  try { localStorage.setItem(SAVE_KEY, JSON.stringify({ s, name, color, log: document.getElementById('log').innerHTML })); } catch {}
+}
+function clearSave() { try { localStorage.removeItem(SAVE_KEY); } catch {} }
+function loadSave() {
+  try { return JSON.parse(localStorage.getItem(SAVE_KEY)); } catch { return null; }
+}
+const saved = loadSave();
+if (saved) {
+  const b = document.getElementById('continue');
+  b.style.display = 'inline-block';
+  b.textContent = `▶ Continuer (${saved.name}, jour ${saved.s.jour})`;
+}
+function continueGame() {
+  const d = loadSave();
+  if (!d) return;
+  Object.assign(s, d.s); name = d.name; color = d.color;
+  launch();
+  document.getElementById('log').innerHTML = d.log;
+  log('Partie reprise.');
+  render();
+}
+function newGame() { clearSave(); start(); }
+
+// ---- Affichage ----
+function bar(icon, label, v) {
+  const col = `hsl(${v * 1.2}, 75%, 45%)`;
+  return `<div class="bar"><span>${icon} ${label}</span><div class="track"><div class="fill" style="width:${v}%;background:${col}"></div></div><b>${v}</b></div>`;
+}
+
+function render() {
+  const h = s.heure;
+  const moment = h < 12 ? '🌅' : h < 18 ? '☀️' : h < 21 ? '🌇' : '🌙';
+  document.getElementById('title').textContent = `${name} — Jour ${s.jour} · ${moment} ${h} h`;
+  document.getElementById('stats').innerHTML = `
+    ${bar('❤️', 'Santé', s.sante)}${bar('🙂', 'Moral', s.moral)}${bar('🔋', 'Téléphone', s.tel)}
+    <div>💶 Argent : ${s.argent} €</div><div>🗣️ Langue : niv. ${s.langue}</div>
+    <div>📄 Papiers : ${PAPIERS[s.papiers]}</div><div>🤝 Réseau : ${s.reseau}</div>`;
+  // Jour et nuit : la carte s'assombrit à partir de 18 h
+  document.getElementById('night').style.opacity = Math.max(0, Math.min(0.65, (h - 17) * 0.11));
+  placePlayer(s.pos);
+  PLACES.forEach((p, i) => {
+    const lock = p.lock && p.lock();
+    const ouvert = h >= p.o && h < p.f;
+    const b = placeBtns[i];
+    b.classList.toggle('locked', !!lock);
+    b.classList.toggle('closed', !lock && !ouvert);
+    const nom = p.a === 'appart' && s.appart ? 'Chez toi' : p.nom;
+    const info = lock ? '🔒 ' + p.lockTxt : p.f - p.o === 24 ? '24 h/24' : `${p.o} h – ${p.f} h`;
+    b.innerHTML = `<span>${lock ? '🔒' : p.ico}</span>${nom}<small>${info}</small>`;
+  });
+}
+
+function log(t) {
+  const l = document.getElementById('log');
+  l.innerHTML = `<div>${t.replace(/</g, '&lt;')}</div>` + l.innerHTML;
+}
+</script>
+</body>
+</html>
