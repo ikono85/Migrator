@@ -29,11 +29,11 @@
   .bar { grid-column: 1 / -1; display: grid; grid-template-columns: 120px 1fr 32px; align-items: center; gap: 8px; }
   .track { height: 14px; background: #1e2430; border-radius: 7px; overflow: hidden; }
   .fill { height: 100%; border-radius: 7px; transition: width .4s, background .4s; }
-  .map { position: relative; aspect-ratio: 16 / 13; background: #3c4a3a; border-radius: 10px; overflow: hidden; margin-bottom: 8px; }
+  .map { position: relative; aspect-ratio: 16 / 15; background: #3c4a3a; border-radius: 10px; overflow: hidden; margin-bottom: 8px; }
   .road { position: absolute; background: #5a5f66; }
-  .road.h { left: 0; right: 0; height: 9%; transform: translateY(-50%); border-block: 2px dashed #777; }
+  .road.h { left: 0; right: 0; height: 7%; transform: translateY(-50%); border-block: 2px dashed #777; }
   .road.v { top: 0; bottom: 0; width: 7%; transform: translateX(-50%); }
-  .park { position: absolute; left: 78%; top: 70%; width: 20%; height: 27%; background: #4f7a45; border-radius: 40%; }
+  .park { position: absolute; left: 79%; top: 76%; width: 19%; height: 21%; background: #4f7a45; border-radius: 40%; }
   .place { position: absolute; transform: translate(-50%, -50%); margin: 0; padding: 6px 8px; min-width: 84px;
            display: flex; flex-direction: column; align-items: center; background: #2a3242ee; border: 2px solid #4a7bd0;
            border-radius: 10px; font-size: 12px; line-height: 1.2; z-index: 2; }
@@ -46,6 +46,13 @@
   .player { position: absolute; width: 30px; height: 30px; border-radius: 50%; border: 2px solid #fff; z-index: 3;
             transform: translate(-50%, 20%); transition: left .5s ease-in-out, top .5s ease-in-out; pointer-events: none;
             box-shadow: 0 0 8px #000; }
+  .actions { margin: 10px 0 14px; }
+  .here { font-size: 14px; opacity: .85; margin: 0 0 6px 4px; }
+  .act { display: inline-flex; flex-direction: column; align-items: flex-start; gap: 2px;
+         text-align: left; background: #3b4a63; }
+  .act small { font-size: 11px; opacity: .75; }
+  .act:disabled { opacity: .35; cursor: not-allowed; }
+  .act:disabled:hover { background: #3b4a63; }
   @media (max-width: 480px) { .place { min-width: 0; font-size: 9px; padding: 3px; } .place span { font-size: 18px; } .place small { display: none; } }
   @keyframes pop { from { transform: scale(3); opacity: 0; } to { transform: scale(1); opacity: 1; } }
 </style>
@@ -68,8 +75,9 @@
   <div class="stats" id="stats"></div>
   <h3>🗺️ La ville</h3>
   <div class="map" id="map">
-    <div class="road h" style="top:34%"></div>
-    <div class="road h" style="top:66%"></div>
+    <div class="road h" style="top:25%"></div>
+    <div class="road h" style="top:50%"></div>
+    <div class="road h" style="top:75%"></div>
     <div class="road v" style="left:25%"></div>
     <div class="road v" style="left:50%"></div>
     <div class="road v" style="left:75%"></div>
@@ -77,6 +85,7 @@
     <div class="night" id="night"></div>
     <div class="player" id="player"></div>
   </div>
+  <div class="actions" id="actions"></div>
   <h3>Journal</h3>
   <div class="log" id="log"></div>
 </div>
@@ -104,7 +113,7 @@ const AVATAR = {
   '#7b4a2a': 'perso/8e1c08e031d3b42e218d8b6df5069e.webp'
 };
 const avatarBg = c => `${c} url('${AVATAR[c]}') center / cover`;
-const s = { sante: 70, moral: 50, argent: 50, langue: 1, papiers: 0, reseau: 0, tel: 40, jour: 1, heure: 8, pos: 0 };
+const s = { sante: 70, moral: 50, argent: 50, langue: 1, papiers: 0, reseau: 0, tel: 40, jour: 1, heure: 8, pos: 0, bonus: 0, appart: false, diplome: false, clopes: 0, chaud: 0, dette: 0, echeance: 0 };
 const PAPIERS = ['Aucun', 'Dossier déposé', 'Récépissé', 'Titre de séjour'];
 let name = 'Sam';
 
@@ -233,6 +242,32 @@ const EVENTS = [
         s.moral -= 25; s.papiers = Math.max(0, s.papiers - 1); sfx('bad'); return 'Rattrapé·e. Ton dossier recule.';
       }]
     ] },
+  { choice: true, txt: () => 'Un habitué te demande de garder son sac « juste 10 minutes ».',
+    opts: [
+      ['Accepter', () => {
+        if (Math.random() < .5) { s.argent += 10; s.reseau++; sfx('coin'); return 'Il revient, te remercie et te glisse 10 €.'; }
+        police(2); s.chaud += 3; return 'Le sac n\'était pas net. Te voilà fiché·e dans le quartier.';
+      }],
+      ['Refuser', () => { s.moral -= 5; return 'Il t\'insulte devant tout le monde.'; }]
+    ] },
+  { choice: true, txt: () => `Le gardien fouille les affaires de ${name} sans rien demander.`,
+    opts: [
+      ['Baisser la tête', () => { s.moral -= 12; return 'Tu ne dis rien. C\'est ça le plus dur.'; }],
+      ['Rétorquer', () => {
+        s.moral += 5;
+        if (s.argent >= 10) { s.argent -= 10; return 'Tu tiens tête. Ça te coûte 10 € de « frais » le lendemain.'; }
+        s.sante -= 10; s.moral -= 10; sfx('bad'); return 'Tu tiens tête, et tu dors dehors pour la nuit.';
+      }]
+    ] },
+  { choice: true, txt: () => 'Un habitué demande ton téléphone pour un « appel urgent ».',
+    opts: [
+      ['Prêter', () => {
+        if (Math.random() < .6) { s.tel = 0; return 'Il te le rend, batterie à zéro.'; }
+        const perte = Math.min(s.argent, 30); s.argent -= perte; s.moral -= 10; sfx('bad');
+        return `Il disparaît avec. Tu en rachètes un d'occasion (−${perte} €).`;
+      }],
+      ['Refuser', () => { s.moral -= 5; return 'Il hausse les épaules. L\'ambiance est glaciale.'; }]
+    ] },
   { choice: true, txt: () => 'Ta famille a besoin d\'argent au pays.',
     opts: [
       ['Envoyer 25 €', () => { if (s.argent < 25) return 'Tu n\'as pas assez… ça te pèse.'; s.argent -= 25; s.moral += 12; sfx('coin'); return 'Ta famille t\'appelle pour te remercier.'; }],
@@ -276,26 +311,228 @@ function endScreen(title, col, msg, snd) {
 }
 
 // ---- Carte de la ville ----
-// o/f = heures d'ouverture/fermeture, d = durée de l'action (h), lock = condition pour débloquer
-const PLACES = [
-  { a: 'sleep', ico: '🏚️', nom: 'Foyer',        x: 12, y: 18, o: 0,  f: 24, d: 0 },
-  { a: 'lang',  ico: '🏫', nom: 'École',        x: 37, y: 18, o: 9,  f: 18, d: 2 },
-  { a: 'biblio',ico: '📚', nom: 'Bibliothèque', x: 63, y: 18, o: 10, f: 19, d: 2 },
-  { a: 'pref',  ico: '🏛️', nom: 'Préfecture',   x: 88, y: 18, o: 9,  f: 16, d: 3 },
-  { a: 'appart',ico: '🏠', nom: 'Appartement',  x: 12, y: 50, o: 0,  f: 24, d: 0,
-    lock: () => !s.appart && s.argent < 150, lockTxt: '150 € pour louer' },
-  { a: 'culte', ico: '🕌', nom: 'Lieu de culte',x: 37, y: 50, o: 6,  f: 21, d: 1 },
-  { a: 'hosto', ico: '🏥', nom: 'Hôpital',      x: 63, y: 50, o: 0,  f: 24, d: 2 },
-  { a: 'usine', ico: '🏭', nom: 'Usine',        x: 88, y: 50, o: 7,  f: 20, d: 6,
-    lock: () => s.papiers < 2, lockTxt: 'Récépissé requis' },
-  { a: 'job',   ico: '🛒', nom: 'Marché',       x: 12, y: 82, o: 6,  f: 14, d: 4 },
-  { a: 'assoc', ico: '🤝', nom: 'Association',  x: 37, y: 82, o: 10, f: 19, d: 2 },
-  { a: 'call',  ico: '📞', nom: 'Parc (wifi)',  x: 63, y: 82, o: 0,  f: 24, d: 1 }
-];
+// o/f = heures d'ouverture/fermeture, lock = ce qui verrouille le lieu
+// acts = les boutons proposés une fois sur place (d = durée de l'action, en heures)
 const FIN_JOURNEE = 23;
+
+// petites aides pour écrire les actions
+let refus = false;
+const non = t => { refus = true; log(t); };
+const cout = n => { if (s.argent < n) { non(`Il te faut ${n} € pour ça.`); return false; } s.argent -= n; return true; };
+const gagneLangue = p => {
+  if (Math.random() < p && s.langue < 10) { s.langue++; sfx('good'); log(`🗣️ ${name} progresse en langue ! Niveau ${s.langue}.`); return true; }
+  return false;
+};
+// contrôle de police : renvoie vrai si tu t'es fait prendre (tu perds l'action)
+const police = base => {
+  if (Math.random() > base + (s.chaud || 0) * .04) return false;
+  const amende = Math.min(s.argent, rnd(10, 20));
+  s.argent -= amende; s.moral -= 12; s.clopes = 0; s.chaud = 0; sfx('bad');
+  log(`👮 Contrôle de police ! Marchandise saisie${amende ? `, ${amende} € d'amende` : ''}.`);
+  if (s.papiers >= 1 && Math.random() < .3) { s.papiers--; log(`Ton dossier recule : ${PAPIERS[s.papiers]}.`); }
+  return true;
+};
+// proposee au bar et au coin de rue : le meme objet dans les deux lieux
+const depannage = { ico: '💸', nom: 'Demander un dépannage rapide', d: 1, info: '+30 € · 50 € à rendre', fn: () => {
+  s.argent += 30; s.dette = (s.dette || 0) + 50; s.echeance = s.jour + 2; sfx('coin');
+  log('💸 Un type te dépanne de 30 €. Il faudra lui en rendre 50 — et il sait où te trouver.'); } };
+const atout = (n, t) => { s.bonus = (s.bonus || 0) + n; log('📌 ' + t); };
+
+const PLACES = [
+  { a: 'foyer', ico: '🏚️', nom: 'Foyer', x: 12, y: 13, o: 0, f: 24, acts: [
+    { ico: '😴', nom: 'Dormir', d: 0, info: 'la nuit · 8 €', fn: () => dormir(false) },
+    { ico: '🍜', nom: 'Repas du foyer', d: 1, info: '3 € · +8 santé', fn: () => {
+        if (!cout(3)) return; s.sante += 8; s.moral += 2; sfx('good'); log('Un repas chaud au réfectoire du foyer.'); } },
+    { ico: '🚿', nom: 'Douche et lessive', d: 1, info: 'gratuit · +moral', fn: () => {
+        s.sante += 3; s.moral += 6; sfx('good'); log(`${name} se sent propre, et un peu plus humain·e.`); } },
+    { ico: '💬', nom: 'Discuter avec les autres', d: 1, info: 'chance de réseau', fn: () => {
+        s.moral += 4;
+        if (Math.random() < .35) { s.reseau++; sfx('good'); log(`Un résident te donne de bons conseils. Réseau : ${s.reseau}.`); }
+        else log('Vous parlez du pays, des dossiers, de la pluie.'); } }
+  ]},
+
+  { a: 'ecole', ico: '🏫', nom: 'École', x: 37, y: 13, o: 9, f: 18, acts: [
+    { ico: '📖', nom: 'Cours de langue', d: 2, info: '5 €', fn: () => {
+        if (!cout(5)) return; s.sante -= 5;
+        if (!gagneLangue(.4)) log(`${name} a suivi un cours. Ça rentre doucement.`); } },
+    { ico: '🗣️', nom: 'Atelier conversation', d: 2, info: 'gratuit · +moral', fn: () => {
+        s.moral += 6;
+        if (!gagneLangue(.2)) log('Deux heures à parler avec les autres élèves. On rit beaucoup.'); } },
+    { ico: '🎓', nom: "Passer l'examen de langue", d: 3, info: '20 € · niveau 5 requis',
+      hide: () => s.diplome, fn: () => {
+        if (s.langue < 5) return non("Il faut au moins le niveau 5 pour s'inscrire.");
+        if (!cout(20)) return;
+        if (Math.random() < .3 + s.langue * .07) { s.diplome = true; s.moral += 20; sfx('win'); log('🎓 Examen réussi ! Ton diplôme aidera à la préfecture.'); }
+        else { s.moral -= 10; sfx('bad'); log('Examen raté de peu. Tu pourras le repasser.'); } } }
+  ]},
+
+  { a: 'biblio', ico: '📚', nom: 'Bibliothèque', x: 63, y: 13, o: 10, f: 19, acts: [
+    { ico: '📕', nom: 'Réviser la langue', d: 2, info: 'gratuit · lent', fn: () => {
+        s.moral += 2;
+        if (!gagneLangue(.2)) log('Deux heures à lire, au chaud et gratuitement.'); } },
+    { ico: '💻', nom: 'Utiliser un ordinateur', d: 1, info: 'offres · recharge', fn: () => {
+        s.moral += 2; s.tel = Math.min(100, s.tel + 20);
+        if (Math.random() < .4) { s.reseau++; sfx('good'); log(`Tu réponds à une annonce et notes un contact. Réseau : ${s.reseau}.`); }
+        else log('Rien d’intéressant aujourd’hui, mais tu as rechargé ton téléphone.'); } },
+    { ico: '🗞️', nom: 'Lire le journal', d: 1, info: '+moral', fn: () => {
+        s.moral += 4;
+        if (!gagneLangue(.12)) log('Tu suis les nouvelles du pays, et celles d’ici.'); } }
+  ]},
+
+  { a: 'pref', ico: '🏛️', nom: 'Préfecture', x: 88, y: 13, o: 9, f: 16, acts: [
+    { ico: '📄', nom: 'Déposer / suivre ton dossier', d: 3, info: '1 fois par jour', fn: () => {
+        if (s.prefJour === s.jour) return non("La préfecture t'a déjà reçu·e aujourd'hui. Reviens demain.");
+        s.prefJour = s.jour; s.sante -= 8;
+        const chance = .05 + s.langue * .025 + s.reseau * .02 - s.papiers * .04 + (s.diplome ? .1 : 0) + (s.bonus || 0);
+        s.bonus = 0;
+        if (Math.random() < chance) { s.papiers++; s.moral += 15; sfx('good'); log(`Préfecture : avancée ! ${PAPIERS[s.papiers]}.`); }
+        else { s.moral -= 8; sfx('bad'); log('Préfecture : 3 h d’attente… « Revenez avec un justificatif ».'); } } },
+    { ico: '❓', nom: 'Se renseigner au guichet', d: 1, info: '+10 % au prochain dossier', fn: () => {
+        s.moral -= 2; sfx('ring'); atout(.1, 'On t’explique enfin quelle pièce manque. Tu notes tout.'); } },
+    { ico: '⚖️', nom: 'Consulter un avocat', d: 2, info: '40 € · +25 %', fn: () => {
+        if (!cout(40)) return; s.moral += 5; sfx('good'); atout(.25, 'L’avocat relit ton dossier et corrige deux erreurs.'); } }
+  ]},
+
+  { a: 'appart', ico: '🏠', nom: 'Appartement', x: 12, y: 37, o: 0, f: 24,
+    lock: () => !s.appart && s.argent < 150, lockTxt: '150 € pour louer', acts: [
+    { ico: '🔑', nom: "Louer l'appartement", d: 1, info: '150 € · une seule fois',
+      hide: () => s.appart, fn: () => {
+        if (!cout(150)) return; s.appart = true; s.moral += 20; sfx('win');
+        log('🏠 Tu as loué un appartement ! Tu y dormiras bien mieux (loyer 15 €/nuit).'); } },
+    { ico: '😴', nom: 'Dormir chez toi', d: 0, info: 'la nuit · 15 €',
+      hide: () => !s.appart, fn: () => dormir(true) },
+    { ico: '🍲', nom: 'Cuisiner', d: 1, info: '5 € · +12 santé',
+      hide: () => !s.appart, fn: () => {
+        if (!cout(5)) return; s.sante += 12; s.moral += 5; sfx('good'); log('Un plat du pays, enfin fait maison.'); } },
+    { ico: '👥', nom: 'Inviter des amis', d: 2, info: '10 € · réseau 2 requis',
+      hide: () => !s.appart, fn: () => {
+        if (s.reseau < 2) return non('Tu ne connais pas encore assez de monde.');
+        if (!cout(10)) return; s.moral += 18; s.sante += 3; sfx('good'); log('Une vraie soirée, des rires : tu te sens moins seul·e.'); } }
+  ]},
+
+  { a: 'culte', ico: '🕌', nom: 'Lieu de culte', x: 37, y: 37, o: 6, f: 21, acts: [
+    { ico: '🙏', nom: 'Prier', d: 1, info: '+10 moral', fn: () => {
+        s.moral += 10; sfx('good'); log(`${name} trouve un peu de paix.`); } },
+    { ico: '🤲', nom: 'Se confier', d: 2, info: '+18 moral', fn: () => {
+        s.moral += 18; sfx('good'); log('Tu racontes ton voyage. On t’écoute sans te juger.'); } },
+    { ico: '🍲', nom: 'Aider au repas solidaire', d: 3, info: 'réseau · +santé', fn: () => {
+        s.reseau++; s.moral += 8; s.sante += 6; sfx('good');
+        log(`Tu sers les repas, puis tu manges avec les autres. Réseau : ${s.reseau}.`); } }
+  ]},
+
+  { a: 'hosto', ico: '🏥', nom: 'Hôpital', x: 63, y: 37, o: 0, f: 24, acts: [
+    { ico: '💊', nom: 'Consulter un médecin', d: 2, info: '20 € · +30 santé', fn: () => {
+        if (!cout(20)) return; s.sante += 30; sfx('good'); log(`Un médecin soigne ${name}.`); } },
+    { ico: '🚑', nom: 'Attendre aux urgences', d: 5, info: 'gratuit · très long', fn: () => {
+        s.sante += 22; s.moral -= 8; sfx('good'); log('Cinq heures sur une chaise, mais tu es soigné·e gratuitement.'); } },
+    { ico: '🩺', nom: 'Faire un bilan de santé', d: 2, info: '10 € · justificatif', fn: () => {
+        if (!cout(10)) return; s.sante += 10; sfx('good'); atout(.05, 'Le certificat médical rejoint ton dossier.'); } }
+  ]},
+
+  { a: 'usine', ico: '🏭', nom: 'Usine', x: 88, y: 37, o: 7, f: 20,
+    lock: () => s.papiers < 2, lockTxt: 'Récépissé requis', acts: [
+    { ico: '🔧', nom: 'Journée complète', d: 6, info: '45–65 €', fn: () => {
+        if (s.sante < 25) return non(`${name} est trop épuisé·e pour une journée entière.`);
+        const g = rnd(45, 65); s.argent += g; s.sante -= 20; s.moral += 6; sfx('coin');
+        log(`Journée à l’usine, un vrai contrat ! (+${g} €)`); } },
+    { ico: '⏰', nom: 'Demi-journée', d: 3, info: '20–30 €', fn: () => {
+        if (s.sante < 12) return non('Trop épuisé·e, même pour trois heures.');
+        const g = rnd(20, 30); s.argent += g; s.sante -= 9; sfx('coin'); log(`Une demi-journée à l’usine (+${g} €).`); } },
+    { ico: '🧾', nom: 'Demander une fiche de paie', d: 1, info: '+12 % au dossier', fn: () => {
+        if (s.fiche === s.jour) return non('Tu l’as déjà demandée aujourd’hui.');
+        s.fiche = s.jour; sfx('good'); atout(.12, 'Le patron te remet une fiche de paie : un vrai justificatif.'); } }
+  ]},
+
+  { a: 'job', ico: '🛒', nom: 'Marché', x: 12, y: 62, o: 6, f: 14, acts: [
+    { ico: '📦', nom: 'Petit boulot', d: 4, info: 'payé à la journée', fn: () => {
+        if (s.sante < 15) return non(`${name} est trop épuisé·e pour travailler.`);
+        const g = rnd(10, 20) + s.langue * 3; s.argent += g; s.sante -= 12; s.moral += 3; sfx('coin');
+        log(`${name} décharge des cageots toute la matinée (+${g} €).`); } },
+    { ico: '🥖', nom: 'Acheter à manger', d: 1, info: '8 € · +12 santé', fn: () => {
+        if (!cout(8)) return; s.sante += 12; s.moral += 3; sfx('good'); log('Du pain, des fruits : de quoi tenir.'); } },
+    { ico: '🧺', nom: 'Vendre quelques objets', d: 2, info: 'risqué', fn: () => {
+        if (Math.random() < .25) { s.moral -= 12; sfx('bad'); log('La police municipale te fait ranger ton étal. Rien gagné.'); }
+        else { const g = rnd(8, 25); s.argent += g; sfx('coin'); log(`Tu vends sur un coin de trottoir (+${g} €).`); } } }
+  ]},
+
+  { a: 'assoc', ico: '🤝', nom: 'Association', x: 37, y: 62, o: 10, f: 19, acts: [
+    { ico: '☕', nom: 'Rencontrer les bénévoles', d: 2, info: '+réseau', fn: () => {
+        s.reseau++; s.moral += 6; s.sante += 5; sfx('good'); log(`${name} discute autour d’un café. Réseau : ${s.reseau}.`); } },
+    { ico: '🗂️', nom: 'Aide pour ton dossier', d: 2, info: '+15 % au prochain dossier', fn: () => {
+        s.moral += 4; sfx('good'); atout(.15, 'Une bénévole relit ton dossier ligne par ligne.'); } },
+    { ico: '👕', nom: 'Vestiaire solidaire', d: 1, info: 'gratuit', fn: () => {
+        s.sante += 6; s.moral += 6; sfx('good'); log('Un manteau chaud et des chaussures à ta taille.'); } }
+  ]},
+
+  { a: 'call', ico: '📞', nom: 'Parc (wifi)', x: 63, y: 62, o: 0, f: 24, acts: [
+    { ico: '📞', nom: 'Appeler la famille', d: 1, info: 'batterie · +12 moral', fn: () => {
+        if (s.tel < 10) return non('Plus assez de batterie. Dors pour recharger.');
+        s.tel -= 15; s.moral += 12; sfx('ring'); log(`Message de la famille : « Comment tu vas, ${name} ? »`); } },
+    { ico: '🌳', nom: 'Se reposer sur un banc', d: 2, info: '+8 santé', fn: () => {
+        s.sante += 8; s.moral += 3; log('Deux heures au soleil, les yeux fermés.'); } },
+    { ico: '⚽', nom: 'Jouer au foot', d: 2, info: 'moral · un peu de fatigue', fn: () => {
+        s.sante -= 4; s.moral += 12;
+        if (Math.random() < .4) { s.reseau++; sfx('good'); log(`Un match improvisé, on t’ajoute au groupe. Réseau : ${s.reseau}.`); }
+        else log('Un bon match. Tu oublies tout pendant deux heures.'); } }
+  ]},
+
+  { a: 'rue', ico: '🚬', nom: 'Coin de rue', x: 88, y: 62, o: 0, f: 24, acts: [
+    { ico: '🚬', nom: "Vendre des cigarettes à l'unité", d: 2, info: 'sans rien · rapporte peu', fn: () => {
+        if (police(.1)) return;
+        let g;
+        if (s.clopes > 0) { s.clopes--; g = rnd(11, 17); log(`Tu écoules ton paquet à l'unité (+${g} €).`); }
+        else { g = rnd(3, 8); log(`Quelques cigarettes vendues une par une (+${g} €). C'est peu, mais c'est sans rien.`); }
+        s.argent += g; s.moral -= 2; s.chaud = (s.chaud || 0) + 1; sfx('coin'); } },
+    { ico: '📦', nom: 'Acheter un paquet au noir', d: 1, info: '6 € · à revendre', fn: () => {
+        if (!cout(6)) return; s.clopes = (s.clopes || 0) + 1; sfx('coin');
+        log('Un paquet acheté sous le manteau : il rapportera plus à l’unité.'); } },
+    { ico: '🕶️', nom: 'Faire le guet', d: 3, info: '15–25 € · très risqué', fn: () => {
+        if (police(.22)) return;
+        const g = rnd(15, 25); s.argent += g; s.moral -= 6; s.chaud = (s.chaud || 0) + 2; sfx('coin');
+        log(`Tu surveilles la rue pour d’autres (+${g} €). Tu n’es pas fier·e.`); } },
+    depannage
+  ]},
+
+  { a: 'squat', ico: '🏚️', nom: 'Squat', x: 12, y: 87, o: 0, f: 24, acts: [
+    { ico: '😴', nom: 'Squatter pour la nuit', d: 0, info: 'gratuit · au hasard', fn: () => nuit(() => {
+        s.tel = 100;
+        const d = Math.random();
+        if (d < .5) { s.sante += 15; log('Un matelas dans un coin, personne ne t’embête. Tu récupères.'); }
+        else if (d < .8) { s.sante -= 15; s.moral -= 10; s.argent -= 10; log('Bagarre au milieu de la nuit : tu y laisses des forces et 10 €.'); }
+        else { log('Descente de police dans le squat au petit matin.'); police(2); } }) },
+    { ico: '🔦', nom: 'Chercher des objets', d: 2, info: 'récup · à revendre', fn: () => {
+        const d = Math.random();
+        if (d < .4) { const g = rnd(5, 15); s.argent += g; sfx('coin'); log(`Du métal et un vieux téléphone : revendus (+${g} €).`); }
+        else if (d < .5) { s.sante -= 8; sfx('bad'); log('Tu te coupes en fouillant les gravats.'); }
+        else log('Deux heures à fouiller pour rien.'); } }
+  ]},
+
+  { a: 'pont', ico: '🛞', nom: 'Sous le pont', x: 37, y: 87, o: 0, f: 24, acts: [
+    { ico: '😴', nom: 'Dormir dehors', d: 0, info: 'gratuit · très dur', fn: () => nuit(() => {
+        s.sante -= 10; s.moral -= 8;
+        log('Une nuit dehors, dans le bruit et le froid. Le téléphone reste éteint.'); }) },
+    { ico: '🥫', nom: 'Taper la manche', d: 2, info: '2 à 8 € · −4 moral', fn: () => {
+        const g = rnd(2, 8); s.argent += g; s.moral -= 4; sfx('coin');
+        log(`Deux heures la main tendue (+${g} €). Les regards pèsent.`); } }
+  ]},
+
+  { a: 'bar', ico: '🍺', nom: 'Bar du quartier', x: 63, y: 87, o: 16, f: 24, txt: '16 h – 2 h', acts: [
+    { ico: '🍺', nom: 'Boire un coup', d: 1, info: '4 € · +12 moral', fn: () => {
+        if (!cout(4)) return; s.moral += 12; s.sante -= 5; sfx('good'); log('Un verre au comptoir, la télé en fond. Ça fait du bien.'); } },
+    { ico: '🥂', nom: 'Payer un verre pour discuter', d: 2, info: '8 € · réseau', fn: () => {
+        if (!cout(8)) return;
+        const d = Math.random();
+        if (d < .35) { s.reseau += 2; sfx('good'); log(`La tournée délie les langues : deux contacts de plus. Réseau : ${s.reseau}.`); }
+        else if (d < .6) { s.moral -= 10; sfx('bad'); log('La discussion tourne mal. Tu préfères partir.'); }
+        else log('Tu paies ta tournée. On te remercie, et puis plus rien.'); } },
+    depannage
+  ]}
+];
+
 let moving = false;
 const map = document.getElementById('map');
 const player = document.getElementById('player');
+const panel = document.getElementById('actions');
 const placeBtns = PLACES.map((p, i) => {
   const b = document.createElement('button');
   b.className = 'place';
@@ -305,105 +542,92 @@ const placeBtns = PLACES.map((p, i) => {
   return b;
 });
 function placePlayer(i) { player.style.left = PLACES[i].x + '%'; player.style.top = PLACES[i].y + '%'; }
+// les deux lieux où l'on peut toujours aller, même la nuit : le foyer et son appartement
+const ABRIS = ['foyer', 'squat', 'pont'];
+const litOu = i => ABRIS.includes(PLACES[i].a) || (PLACES[i].a === 'appart' && s.appart);
 
+// ---- Se déplacer : 1 h de marche, puis on choisit une action sur place ----
 function goTo(i) {
   if (over || moving) return;
   const p = PLACES[i];
   if (p.lock && p.lock()) return log(`🔒 ${p.nom} : ${p.lockTxt}.`);
-  const trajet = i === s.pos ? 0 : 1;
-  const arrivee = s.heure + trajet;
-  const dort = p.a === 'sleep' || (p.a === 'appart' && s.appart);
-  if (!dort) {
-    if (arrivee + p.d > FIN_JOURNEE) return log('Il est trop tard. Rentre dormir.');
-    if (arrivee < p.o || arrivee + p.d > p.f) return log(`${p.nom} est fermé à cette heure (ouvert ${p.o} h – ${p.f} h).`);
+  if (i === s.pos) return log('Tu y es déjà : choisis une action sous la carte.');
+  const arrivee = s.heure + 1;
+  if (!litOu(i)) {
+    if (arrivee > FIN_JOURNEE) return log('Il est trop tard pour traverser la ville. Rentre dormir.');
+    if (arrivee < p.o || arrivee >= p.f) return log(`${p.nom} : fermé à ${arrivee} h (ouvert de ${p.o} h à ${p.f} h).`);
   }
   moving = true;
   s.pos = i;
+  s.heure = Math.min(arrivee, FIN_JOURNEE);
   placePlayer(i);
-  setTimeout(() => {
-    moving = false;
-    s.heure = arrivee;
-    const avant = s.heure;
-    act(p.a);
-    // l'action a eu lieu si le journal ne l'a pas refusée : on avance l'horloge
-    if (s.heure === avant && !dort && !refus) s.heure += p.d;
-    refus = false;
-    endTurn();
-  }, trajet ? 500 : 0);
+  log(`🚶 ${name} marche jusqu'à « ${p.nom} » (1 h).`);
+  setTimeout(() => { moving = false; endTurn(); }, 500);
 }
 
-// ---- Actions ----
-let refus = false;
-const non = t => { refus = true; log(t); };
-
-function dormir(appart) {
-  s.jour++; s.heure = 8; s.tel = 100;
-  if (appart) {
-    s.sante += 35; s.moral += 8; s.argent -= 15;
-    log('Une vraie nuit au calme dans ton appartement (loyer 15 €).');
-  } else {
-    s.sante += 20; s.argent -= 8;
+// ---- Faire une des actions du lieu où l'on se trouve ----
+function doAct(i) {
+  if (over || moving) return;
+  const p = PLACES[s.pos], a = p.acts[i];
+  if (!a || (a.hide && a.hide())) return;
+  const fin = s.heure + a.d;
+  if (a.d > 0) {
+    if (fin > FIN_JOURNEE) return log(`Pas le temps : « ${a.nom} » prend ${a.d} h et il est déjà ${s.heure} h.`);
+    if (p.f - p.o < 24 && fin > p.f) return log(`${p.nom} ferme à ${p.f} h : pas le temps pour « ${a.nom} ».`);
   }
+  refus = false;
+  a.fn();
+  if (!refus && a.d) s.heure += a.d;
+  refus = false;
+  endTurn();
+}
+
+// ---- Les boutons d'action du lieu, affichés sous la carte ----
+function renderPanel() {
+  const p = PLACES[s.pos];
+  const nom = p.a === 'appart' && s.appart ? 'chez toi' : p.nom;
+  let html = `<div class="here">📍 Tu es à « ${nom} » — que fais-tu ?</div>`;
+  p.acts.forEach((a, i) => {
+    if (a.hide && a.hide()) return;
+    const fin = s.heure + a.d;
+    const tard = a.d > 0 && (fin > FIN_JOURNEE || (p.f - p.o < 24 && fin > p.f));
+    html += `<button class="act" onclick="doAct(${i})"${tard ? ' disabled' : ''}>` +
+            `<b>${a.ico} ${a.nom}</b><small>${a.d ? a.d + ' h · ' : ''}${a.info}</small></button>`;
+  });
+  panel.innerHTML = html;
+}
+
+// ---- La nuit ----
+function nuit(fx) {
+  s.jour++; s.heure = 8;
+  fx();
   sfx('sleep');
   if (s.argent < 0) { s.argent = 0; s.sante -= 10; s.moral -= 10; log('Pas assez pour manger… nuit difficile.'); }
+  if (s.chaud > 0) s.chaud--;
   log(`— Jour ${s.jour} —`);
   s.sante = clamp(s.sante); s.moral = clamp(s.moral);
+  usurier();
   randomEvent();
 }
 
-function act(a) {
-  if (over) return;
-  switch (a) {
-    case 'job': {
-      if (s.sante < 15) return non(`${name} est trop épuisé·e pour travailler.`);
-      const g = rnd(10, 20) + s.langue * 3;
-      s.argent += g; s.sante -= 12; s.moral += 3; sfx('coin');
-      log(`${name} a trouvé un petit boulot sur un marché (+${g} €).`); break;
-    }
-    case 'usine': {
-      if (s.sante < 25) return non(`${name} est trop épuisé·e pour une journée à l'usine.`);
-      const g = rnd(45, 65);
-      s.argent += g; s.sante -= 20; s.moral += 6; sfx('coin');
-      log(`Journée à l'usine, un vrai contrat ! (+${g} €)`); break;
-    }
-    case 'lang':
-      if (s.argent < 5) return non('Pas assez d\'argent pour le cours (5 €).');
-      s.argent -= 5; s.sante -= 5;
-      if (Math.random() < 0.4 && s.langue < 10) { s.langue++; sfx('good'); log(`${name} progresse en langue ! Niveau ${s.langue}.`); }
-      else log(`${name} a suivi un cours. Ça rentre doucement.`);
-      break;
-    case 'biblio':
-      s.moral += 2;
-      if (Math.random() < 0.2 && s.langue < 10) { s.langue++; sfx('good'); log(`À force de lire, ${name} progresse ! Langue niv. ${s.langue}.`); }
-      else log('Deux heures à la bibliothèque, au chaud et gratuitement.');
-      break;
-    case 'pref':
-      if (s.prefJour === s.jour) return non('La préfecture t\'a déjà reçu·e aujourd\'hui. Reviens demain.');
-      s.prefJour = s.jour;
-      s.sante -= 8;
-      // Chaque étape est plus dure que la précédente ; langue et réseau aident
-      if (Math.random() < 0.05 + s.langue * 0.025 + s.reseau * 0.02 - s.papiers * 0.04) { s.papiers++; s.moral += 15; sfx('good'); log(`Préfecture : avancée ! ${PAPIERS[s.papiers]}.`); }
-      else { s.moral -= 8; sfx('bad'); log('Préfecture : 3 h d\'attente… « Revenez avec un justificatif ».'); }
-      break;
-    case 'assoc':
-      s.reseau++; s.moral += 6; s.sante += 5; sfx('good');
-      log(`${name} rencontre des bénévoles. Réseau : ${s.reseau}.`); break;
-    case 'culte':
-      s.moral += 10; sfx('good');
-      log(`${name} trouve un peu de paix et de chaleur humaine.`); break;
-    case 'hosto':
-      if (s.argent < 20) return non('Les soins coûtent 20 €. Tu n\'as pas assez.');
-      s.argent -= 20; s.sante += 30; sfx('good');
-      log(`Un médecin soigne ${name} (-20 €, +30 santé).`); break;
-    case 'call':
-      if (s.tel < 10) return non('Plus assez de batterie. Dors pour recharger.');
-      s.tel -= 15; s.moral += 12; sfx('ring');
-      log(`Message de la famille : « Comment tu vas, ${name} ? »`); break;
-    case 'appart':
-      if (!s.appart) { s.argent -= 150; s.appart = true; s.moral += 20; sfx('win'); log('🏠 Tu as loué un appartement ! Tu y dormiras mieux (loyer 15 €/nuit).'); break; }
-      dormir(true); break;
-    case 'sleep':
-      dormir(false); break;
+function dormir(appart) {
+  nuit(() => {
+    s.tel = 100;
+    if (appart) { s.sante += 35; s.moral += 8; s.argent -= 15; log('Une vraie nuit au calme dans ton appartement (loyer 15 €).'); }
+    else { s.sante += 20; s.argent -= 8; }
+  });
+}
+
+// ---- L'usurier repasse tous les 2 jours tant que la dette n'est pas soldée ----
+function usurier() {
+  if (!s.dette || s.jour < s.echeance) return;
+  if (s.argent >= s.dette) {
+    s.argent -= s.dette; s.moral += 5; sfx('coin');
+    log(`💸 Tu rembourses tes ${s.dette} € : on te laisse tranquille.`);
+    s.dette = 0; s.echeance = 0;
+  } else {
+    s.sante -= 20; s.moral -= 15; s.dette += 10; s.echeance = s.jour + 2; sfx('bad');
+    log(`💸 L'usurier réclame son dû. Tu ne peux pas payer : tu prends des coups et 10 € de pénalité (dette : ${s.dette} €).`);
   }
 }
 
@@ -464,10 +688,16 @@ function render() {
   document.getElementById('stats').innerHTML = `
     ${bar('❤️', 'Santé', s.sante)}${bar('🙂', 'Moral', s.moral)}${bar('🔋', 'Téléphone', s.tel)}
     <div>💶 Argent : ${s.argent} €</div><div>🗣️ Langue : niv. ${s.langue}</div>
-    <div>📄 Papiers : ${PAPIERS[s.papiers]}</div><div>🤝 Réseau : ${s.reseau}</div>`;
+    <div>📄 Papiers : ${PAPIERS[s.papiers]}</div><div>🤝 Réseau : ${s.reseau}</div>
+    ${s.dette ? `<div>💸 Dette : ${s.dette} € (jour ${s.echeance})</div>` : ''}
+    ${s.clopes ? `<div>🚬 Paquets : ${s.clopes}</div>` : ''}
+    ${s.chaud ? `<div>👮 Repéré par la police : ${'!'.repeat(Math.min(5, s.chaud))}</div>` : ''}
+    ${s.diplome ? '<div>🎓 Diplôme de langue</div>' : ''}
+    ${s.bonus ? `<div>📌 Dossier : +${Math.round(s.bonus * 100)} %</div>` : ''}`;
   // Jour et nuit : la carte s'assombrit à partir de 18 h
   document.getElementById('night').style.opacity = Math.max(0, Math.min(0.65, (h - 17) * 0.11));
   placePlayer(s.pos);
+  renderPanel();
   PLACES.forEach((p, i) => {
     const lock = p.lock && p.lock();
     const ouvert = h >= p.o && h < p.f;
@@ -475,7 +705,7 @@ function render() {
     b.classList.toggle('locked', !!lock);
     b.classList.toggle('closed', !lock && !ouvert);
     const nom = p.a === 'appart' && s.appart ? 'Chez toi' : p.nom;
-    const info = lock ? '🔒 ' + p.lockTxt : p.f - p.o === 24 ? '24 h/24' : `${p.o} h – ${p.f} h`;
+    const info = lock ? '🔒 ' + p.lockTxt : p.txt || (p.f - p.o === 24 ? '24 h/24' : `${p.o} h – ${p.f} h`);
     b.innerHTML = `<span>${lock ? '🔒' : p.ico}</span>${nom}<small>${info}</small>`;
   });
 }
