@@ -380,6 +380,13 @@ function finBagarre() {
   else log(`🥊 La bagarre avec ${c.nom} tourne court.`);
   const suite = c.fin; s.combat = null;
   if (suite) suite(victoire);
+  if (combatPending) {
+    const { p, a } = combatPending; combatPending = null;
+    if (!refus && p.apres) p.apres(a);
+    if (!refus) histo().actions++;
+    if (!refus && a.d) s.heure += a.d;
+  }
+  refus = false;
   endTurn();
 }
 
@@ -422,6 +429,9 @@ function goTo(i) {
 }
 
 // ---- Faire une des actions du lieu où l'on se trouve ----
+// une bagarre (voir bagarre() / finBagarre()) ouvre une modale et ne se termine que plus tard :
+// on garde ici ce qu'il reste à faire (p.apres, durée, endTurn) pour le jouer une fois le combat fini.
+let combatPending = null;
 function doAct(i) {
   if (over || moving) return;
   const p = PLACES[s.pos], a = p.acts[i];
@@ -433,6 +443,7 @@ function doAct(i) {
   }
   refus = false;
   a.fn();
+  if (s.combat) { combatPending = { p, a }; return; }
   if (!refus && p.apres) p.apres(a);
   if (!refus) histo().actions++;
   if (!refus && a.d) s.heure += a.d;
@@ -556,6 +567,7 @@ function continueGame() {
   const d = loadSave();
   if (!d) return;
   Object.assign(s, d.s); name = d.name; color = d.color;
+  s.combat = null; // une bagarre en cours ne se sauvegarde jamais (voir doAct/finBagarre) ; par sécurité sur une vieille sauvegarde
   launch();
   document.getElementById('log').innerHTML = d.log;
   log('Partie reprise.');
