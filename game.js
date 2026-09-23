@@ -219,9 +219,8 @@ const gagneLangue = p => {
   if (Math.random() < p + (has('dico') ? .1 : 0) && s.langue < 10) { s.langue++; sfx('good'); log(`🗣️ ${name} progresse en langue ! Niveau ${s.langue}.`); return true; }
   return false;
 };
-// contrôle de police : renvoie vrai si tu t'es fait prendre (tu perds l'action)
-const police = base => {
-  if (Math.random() > base + (s.chaud || 0) * .04) return false;
+// déroulement d'un contrôle de police une fois qu'il a lieu : renvoie vrai si tu t'es fait prendre (tu perds l'action)
+const subitControle = () => {
   if (s.recherche) { arrete('Contrôle de police : ton visage correspond au signalement. Menottes.'); return true; }
   if (connu('morel') && P('morel').rel >= 2 && Math.random() < .5) {
     P('morel').rel--; s.chaud = 0;
@@ -235,6 +234,10 @@ const police = base => {
   if (s.papiers >= 1 && Math.random() < .3) { s.papiers--; log(`Ton dossier recule : ${PAPIERS[s.papiers]}.`); }
   return true;
 };
+// contrôle de police au hasard (base = risque de base, avant le repérage) : renvoie vrai si tu t'es fait prendre
+const police = base => (Math.random() > base + (s.chaud || 0) * .04) ? false : subitControle();
+// contrôle de police garanti (descente, sac suspect confié…) : mêmes conséquences, sans tirage préalable
+const policeCertaine = () => subitControle();
 const DETTE_MAX = 100;
 // bonus au prochain dossier : plafonné, et chaque démarche ne compte qu'une fois par jour
 const BONUS_MAX = .3;
@@ -568,6 +571,7 @@ function continueGame() {
   if (!d) return;
   Object.assign(s, d.s); name = d.name; color = d.color;
   s.combat = null; // une bagarre en cours ne se sauvegarde jamais (voir doAct/finBagarre) ; par sécurité sur une vieille sauvegarde
+  if (!(s.pos >= 0 && s.pos < PLACES.length)) s.pos = 0; // si PLACES a changé depuis la sauvegarde (voir §12 GAME_SPEC) : on repart du foyer plutôt que de planter
   launch();
   document.getElementById('log').innerHTML = d.log;
   log('Partie reprise.');

@@ -113,7 +113,7 @@ const EVENTS = [
     opts: [
       ['Accepter', () => {
         if (Math.random() < .5) { s.argent += 10; s.reseau++; sfx('coin'); return 'Il revient, te remercie et te glisse 10 €.'; }
-        police(2); s.chaud += 3; return 'Le sac n\'était pas net. Te voilà fiché·e dans le quartier.';
+        policeCertaine(); s.chaud += 3; return 'Le sac n\'était pas net. Te voilà fiché·e dans le quartier.';
       }],
       ['Refuser', () => { s.moral -= 5; return 'Il t\'insulte devant tout le monde.'; }]
     ] },
@@ -405,7 +405,7 @@ const PLACES = [
         const d = Math.random();
         if (d < .5) { s.sante += 15; log('Un matelas dans un coin, personne ne t’embête. Tu récupères.'); }
         else if (d < .8) { const perte = has('cadenas') ? 0 : Math.min(s.argent, 10); s.sante -= 15; s.moral -= 10; s.argent -= perte; log(`Bagarre au milieu de la nuit : tu y laisses des forces${perte ? ` et ${perte} €` : has('cadenas') ? ', mais ton argent est resté sous cadenas' : ''}.`); volObjet(.3); }
-        else { log('Descente de police dans le squat au petit matin.'); police(2); } }) },
+        else { log('Descente de police dans le squat au petit matin.'); policeCertaine(); } }) },
     { ico: '🔦', nom: 'Chercher des objets', d: 2, info: 'récup · à revendre', fn: () => {
         const d = Math.random();
         if (d < .4) { const g = rnd(5, 15); s.argent += g; sfx('coin'); log(`Du métal et un vieux téléphone : revendus (+${g} €).`); }
