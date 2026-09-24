@@ -7,9 +7,9 @@
 const COLORS = ['#111111', '#facc15', '#7b4a2a'];
 let color = COLORS[0];
 const AVATAR = {
-  '#111111': 'perso/14.png',
-  '#facc15': 'perso/rond jaune.webp',
-  '#7b4a2a': 'perso/8e1c08e031d3b42e218d8b6df5069e.webp'
+  '#111111': 'perso/noir.jpg',
+  '#facc15': 'perso/jaune.png',
+  '#7b4a2a': 'perso/marron.jpg'
 };
 const avatarBg = c => `${c} url('${AVATAR[c]}') center / cover`;
 const s = { sante: 70, moral: 50, argent: 50, langue: 1, papiers: 0, reseau: 0, tel: 40, jour: 1, heure: 8, pos: 0, bonus: 0, appart: false, diplome: false, clopes: 0, chaud: 0, dette: 0, echeance: 0, sac: 0, inv: [], recherche: 0, cauchemars: 0, crimes: 0 };
@@ -229,7 +229,7 @@ const subitControle = () => {
   }
   histo().controles++;
   const amende = Math.min(s.argent, (rnd(10, 20) + (s.sac >= 2 ? (s.clopes || 0) * 3 : 0)) * (has('machette') ? 2 : 1));
-  s.argent -= amende; s.moral -= 12; s.clopes = 0; s.chaud = 0; sfx('bad');
+  s.argent -= amende; histo().depense += amende; s.moral -= 12; s.clopes = 0; s.chaud = 0; sfx('bad');
   log(`👮 Contrôle de police ! Marchandise saisie${amende ? `, ${amende} € d'amende` : ''}.`);
   if (s.papiers >= 1 && Math.random() < .3) { s.papiers--; log(`Ton dossier recule : ${PAPIERS[s.papiers]}.`); }
   return true;
@@ -314,7 +314,7 @@ function itemMenu(k) {
 const arrete = t => { s.arrete = t; log('🚨 ' + t); };
 function agression(victime, gain, souvenir, perteMoral, texte) {
   s.crimes = (s.crimes || 0) + 1;
-  lien('morel', -2);
+  P('morel').rel -= 2; // compte même avant la première rencontre avec Morel
   s.argent += gain; s.moral -= perteMoral; s.chaud = (s.chaud || 0) + 2;
   s.cauchemars = (s.cauchemars || 0) + 3;
   sfx('bad'); log(`🩸 ${texte} (+${gain} €)`);
@@ -501,8 +501,8 @@ function dormir(appart) {
   if (s.argent < prix) return non(`Il te faut ${prix} € pour dormir ici. Le squat et le pont sont gratuits.`);
   nuit(() => {
     s.tel = 100;
-    if (appart) { s.sante += 35; s.moral += 8; s.argent -= 15; log('Une vraie nuit au calme dans ton appartement (loyer 15 €).'); }
-    else { s.sante += 20; s.argent -= 8; }
+    if (appart) { s.sante += 35; s.moral += 8; s.argent -= 15; histo().depense += 15; log('Une vraie nuit au calme dans ton appartement (loyer 15 €).'); }
+    else { s.sante += 20; s.argent -= 8; histo().depense += 8; }
   });
 }
 
@@ -510,7 +510,7 @@ function dormir(appart) {
 function usurier() {
   if (!s.dette || s.jour < s.echeance) return;
   if (s.argent >= s.dette) {
-    s.argent -= s.dette; s.moral += 5; sfx('coin');
+    s.argent -= s.dette; histo().depense += s.dette; s.moral += 5; sfx('coin');
     lien('dede', 1);
     log(`💸 Tu rembourses tes ${s.dette} € à Dédé. « T'es réglo, toi. »`);
     s.dette = 0; s.echeance = 0;

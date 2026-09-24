@@ -40,7 +40,7 @@ const EVENTS = [
     opts: [
       ['Prêter 10 €', () => {
         if (s.argent < 10) return 'Tu n’as même pas 10 €. Karim comprend.';
-        const k = P('karim'); s.argent -= 10; k.rel += 2; k.etape = 1; k.rend = s.jour + 3; sfx('good');
+        const k = P('karim'); s.argent -= 10; histo().depense += 10; k.rel += 2; k.etape = 1; k.rend = s.jour + 3; sfx('good');
         return 'Karim te serre la main longtemps. « Je n’oublierai pas. »'; }],
       ['Refuser', () => { const k = P('karim'); k.rel -= 2; k.etape = 2; return 'Karim hoche la tête sans rien dire.'; }]
     ] },
@@ -73,12 +73,12 @@ const EVENTS = [
   { ico: '👮', img: 'images/pnj/morel.png', col: '#2f6fd1', cond: () => connu('morel') && P('morel').rel <= -3 && !P('morel').hostile, snd: 'bad',
     txt: () => 'Le brigadier Morel t’a dans le collimateur. Ses collègues connaissent ton visage.',
     fx: () => { P('morel').hostile = true; s.chaud = (s.chaud || 0) + 3; } },
-  { ico: '🍲', col: '#d9822b', txt: () => `Un bénévole offre un repas chaud à ${name}.`, fx: () => { s.sante += 10; s.moral += 5; }, snd: 'good' },
-  { ico: '📵', col: '#6b7280', txt: () => `Le téléphone de ${name} a été volé dans la nuit !`, fx: () => { s.tel = 0; s.moral -= 15; volObjet(.5); }, snd: 'bad' },
-  { ico: '💸', col: '#c0392b', txt: () => 'On te réclame de l’argent pour ta place : -20 €, ou tout ce que tu as.', fx: () => { s.argent = Math.max(0, s.argent - 20); }, snd: 'bad' },
-  { ico: '💶', col: '#2f9e5a', txt: () => 'Tu trouves un billet de 10 € par terre.', fx: () => { s.argent += 10; s.moral += 3; }, snd: 'coin' },
-  { ico: '🥶', col: '#2f6fd1', txt: () => has('couchage') ? 'Nuit glaciale, mais ton sac de couchage te garde au chaud.' : 'Nuit glaciale, tu dors mal.', fx: () => { if (!has('couchage')) s.sante -= 12; }, snd: 'bad' },
-  { ico: '🗣️', col: '#8e44ad', txt: () => 'Un voisin t\'apprend quelques mots en échange d\'un coup de main.', fx: () => { if (s.langue < 10) s.langue++; }, snd: 'good' },
+  { ico: '🍲', img: 'images/evenements/repas.jpg', col: '#d9822b', txt: () => `Un bénévole offre un repas chaud à ${name}.`, fx: () => { s.sante += 10; s.moral += 5; }, snd: 'good' },
+  { ico: '📵', img: 'images/evenements/telephone-vole.jpg', col: '#6b7280', txt: () => `Le téléphone de ${name} a été volé dans la nuit !`, fx: () => { s.tel = 0; s.moral -= 15; volObjet(.5); }, snd: 'bad' },
+  { ico: '💸', img: 'images/evenements/argent-reclame.jpg', col: '#c0392b', txt: () => 'On te réclame de l’argent pour ta place : -20 €, ou tout ce que tu as.', fx: () => { const perte = Math.min(s.argent, 20); s.argent -= perte; histo().depense += perte; }, snd: 'bad' },
+  { ico: '💶', img: 'images/evenements/billet.webp', col: '#2f9e5a', txt: () => 'Tu trouves un billet de 10 € par terre.', fx: () => { s.argent += 10; s.moral += 3; }, snd: 'coin' },
+  { ico: '🥶', img: 'images/evenements/nuit-glaciale.jpg', col: '#2f6fd1', txt: () => has('couchage') ? 'Nuit glaciale, mais ton sac de couchage te garde au chaud.' : 'Nuit glaciale, tu dors mal.', fx: () => { if (!has('couchage')) s.sante -= 12; }, snd: 'bad' },
+  { ico: '🗣️', img: 'images/evenements/mots.jpg', col: '#8e44ad', txt: () => 'Un voisin t\'apprend quelques mots en échange d\'un coup de main.', fx: () => { if (s.langue < 10) s.langue++; }, snd: 'good' },
   { choice: true, ico: '💼', img: 'images/evenements/travail-noir.png', col: '#d9822b', txt: () => 'Un inconnu te propose un travail au noir bien payé (60 €). Mais c\'est risqué…',
     opts: [
       ['Accepter', () => {
@@ -89,7 +89,7 @@ const EVENTS = [
     ] },
   { choice: true, ico: '🤝', col: '#c2477a', txt: () => 'Un autre migrant, sans rien à manger, te demande de l\'aide.',
     opts: [
-      ['Partager (10 €)', () => { if (s.argent < 10) return 'Tu n\'as même pas 10 €…'; s.argent -= 10; s.reseau++; s.moral += 10; sfx('good'); return 'Il te remercie. Un ami de plus.'; }],
+      ['Partager (10 €)', () => { if (s.argent < 10) return 'Tu n\'as même pas 10 €…'; s.argent -= 10; histo().depense += 10; s.reseau++; s.moral += 10; sfx('good'); return 'Il te remercie. Un ami de plus.'; }],
       ['Passer ton chemin', () => { s.moral -= 5; return 'Tu y repenses toute la journée.'; }]
     ] },
   { choice: true, ico: '👮', img: 'images/evenements/controle.png', col: '#2f6fd1', txt: () => connu('morel') ? `Le brigadier Morel t'arrête pour un contrôle d'identité. ${humeur(P('morel').rel)}` : 'Contrôle d\'identité dans la rue ! Le policier se présente : brigadier Morel.',
@@ -109,7 +109,7 @@ const EVENTS = [
         s.moral -= 25; s.papiers = Math.max(0, s.papiers - 1); sfx('bad'); return 'Rattrapé·e. Ton dossier recule.';
       }]
     ] },
-  { choice: true, ico: '🎒', col: '#8a5a2b', txt: () => 'Un habitué te demande de garder son sac « juste 10 minutes ».',
+  { choice: true, ico: '🎒', img: 'images/evenements/garder-sac.jpg', col: '#8a5a2b', txt: () => 'Un habitué te demande de garder son sac « juste 10 minutes ».',
     opts: [
       ['Accepter', () => {
         if (Math.random() < .5) { s.argent += 10; s.reseau++; sfx('coin'); return 'Il revient, te remercie et te glisse 10 €.'; }
@@ -117,12 +117,12 @@ const EVENTS = [
       }],
       ['Refuser', () => { s.moral -= 5; return 'Il t\'insulte devant tout le monde.'; }]
     ] },
-  { choice: true, ico: '🔦', col: '#6b7280', txt: () => `Le gardien fouille les affaires de ${name} sans rien demander.`,
+  { choice: true, ico: '🔦', img: 'images/evenements/garder-sac.jpg', col: '#6b7280', txt: () => `Le gardien fouille les affaires de ${name} sans rien demander.`,
     opts: [
       ['Baisser la tête', () => { s.moral -= 12; return 'Tu ne dis rien. C\'est ça le plus dur.'; }],
       ['Rétorquer', () => {
         s.moral += 5;
-        if (s.argent >= 10) { s.argent -= 10; return 'Tu tiens tête. Ça te coûte 10 € de « frais » le lendemain.'; }
+        if (s.argent >= 10) { s.argent -= 10; histo().depense += 10; return 'Tu tiens tête. Ça te coûte 10 € de « frais » le lendemain.'; }
         s.sante -= 10; s.moral -= 10; sfx('bad'); return 'Tu tiens tête, et tu dors dehors pour la nuit.';
       }]
     ] },
@@ -130,14 +130,14 @@ const EVENTS = [
     opts: [
       ['Prêter', () => {
         if (Math.random() < .6) { s.tel = 0; return 'Il te le rend, batterie à zéro.'; }
-        const perte = Math.min(s.argent, 30); s.argent -= perte; s.moral -= 10; sfx('bad');
+        const perte = Math.min(s.argent, 30); s.argent -= perte; histo().depense += perte; s.moral -= 10; sfx('bad');
         return `Il disparaît avec. Tu en rachètes un d'occasion (−${perte} €).`;
       }],
       ['Refuser', () => { s.moral -= 5; return 'Il hausse les épaules. L\'ambiance est glaciale.'; }]
     ] },
   { choice: true, ico: '💌', col: '#c0392b', get img() { return `images/evenements/famille-${{ '#111111': 'noir', '#facc15': 'jaune', '#7b4a2a': 'marron' }[color]}.png`; }, txt: () => 'Ta famille a besoin d\'argent au pays.',
     opts: [
-      ['Envoyer 25 €', () => { if (s.argent < 25) return 'Tu n\'as pas assez… ça te pèse.'; s.argent -= 25; s.moral += 12; sfx('coin'); return 'Ta famille t\'appelle pour te remercier.'; }],
+      ['Envoyer 25 €', () => { if (s.argent < 25) return 'Tu n\'as pas assez… ça te pèse.'; s.argent -= 25; histo().depense += 25; s.moral += 12; sfx('coin'); return 'Ta famille t\'appelle pour te remercier.'; }],
       ['Garder ton argent', () => { s.moral -= 10; return 'Tu culpabilises.'; }]
     ] }
 ];
@@ -404,7 +404,7 @@ const PLACES = [
         dechire();
         const d = Math.random();
         if (d < .5) { s.sante += 15; log('Un matelas dans un coin, personne ne t’embête. Tu récupères.'); }
-        else if (d < .8) { const perte = has('cadenas') ? 0 : Math.min(s.argent, 10); s.sante -= 15; s.moral -= 10; s.argent -= perte; log(`Bagarre au milieu de la nuit : tu y laisses des forces${perte ? ` et ${perte} €` : has('cadenas') ? ', mais ton argent est resté sous cadenas' : ''}.`); volObjet(.3); }
+        else if (d < .8) { const perte = has('cadenas') ? 0 : Math.min(s.argent, 10); s.sante -= 15; s.moral -= 10; s.argent -= perte; histo().depense += perte; log(`Bagarre au milieu de la nuit : tu y laisses des forces${perte ? ` et ${perte} €` : has('cadenas') ? ', mais ton argent est resté sous cadenas' : ''}.`); volObjet(.3); }
         else { log('Descente de police dans le squat au petit matin.'); policeCertaine(); } }) },
     { ico: '🔦', nom: 'Chercher des objets', d: 2, info: 'récup · à revendre', fn: () => {
         const d = Math.random();

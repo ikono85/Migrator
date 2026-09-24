@@ -37,9 +37,9 @@ L'utilisateur saisit un prénom (2 à 16 lettres, validé par `/^[\p{L} \-']{2,1
 
 | Couleur | Avatar | Fond accueil | Fond partie | Musique |
 | --- | --- | --- | --- | --- |
-| `#111111` noir | `perso/14.png` | `geo12ouvkibera-retoucheok.webp` | `rue-noir.jpg` | `noir.mp3` |
-| `#facc15` jaune | `perso/rond jaune.webp` | `riziere-bali-indonesie.avif` | `rue-jaune.webp` | `jaune.mp3` |
-| `#7b4a2a` marron | `perso/8e1c…webp` | `683466.ori.jpg` | `souk-marron.jpg` | `marron.mp3` |
+| `#111111` noir | `perso/noir.jpg` | `geo12ouvkibera-retoucheok.webp` | `rue-noir.jpg` | `noir.mp3` |
+| `#facc15` jaune | `perso/jaune.png` | `riziere-bali-indonesie.avif` | `rue-jaune.webp` | `jaune.mp3` |
+| `#7b4a2a` marron | `perso/marron.jpg` | `683466.ori.jpg` | `souk-marron.jpg` | `marron.mp3` |
 
 Aucune différence de règles entre les couleurs à ce jour : c'est un axe d'évolution prévu (prix, difficulté et événements propres à chaque « pays »).
 
@@ -501,9 +501,8 @@ Un événement s'écrit `{ ico, img?, col, txt, fx, snd }` (immédiat) ou `{ cho
 | `images/sacs/` | `poches`, `plastique`, `dos`, `rando` | ✅ 4/4 |
 | `images/objets/` | les 13 objets, nommés par leur `id` (`couchage`, `machette`…) | ✅ 13/13 |
 | `images/pnj/` | `karim`, `helene`, `morel`, `dede` (carnet et médaillons de leurs événements) | ✅ 4/4 |
-| `images/evenements/` | `famille-noir`, `famille-jaune`, `famille-marron` (choisie selon la couleur), `controle`, `telephone`, `travail-noir` | 4 événements sur 13 |
-| — | migrant, sac suspect, gardien, et les 6 événements immédiats | ⬜ emoji |
-| `perso/` | avatars : encore les ronds de couleur | ⬜ à remplacer |
+| `images/evenements/` | `famille-noir/jaune/marron`, `controle`, `telephone`, `travail-noir`, `repas`, `telephone-vole`, `billet`, `nuit-glaciale`, `mots`, `garder-sac` (réutilisée pour l'événement du gardien), `argent-reclame` | ✅ 13/13 |
+| `perso/` | avatars : `noir.jpg`, `jaune.png`, `marron.jpg` | ✅ 3/3 |
 
 ---
 
@@ -526,7 +525,7 @@ Un événement s'écrit `{ ico, img?, col, txt, fx, snd }` (immédiat) ou `{ cho
 - Les musiques pèsent 14 Mo, ce qui est lourd pour un premier chargement en ligne.
 - Les textes dessinés sur la carte (« 150 € pour louer », « Récépissé requis ») restent affichés quand ils ne s'appliquent plus.
 - Pas de vraie version téléphone : le bandeau est haut, les ronds de la carte sont petits au doigt (prévue plus tard).
-- Les images mélangent photos et dessins ; 9 médaillons d'événements et les 3 avatars n'ont pas encore d'image.
+- Les images mélangent photos et dessins, mais toutes les images prévues (avatars, médaillons d'événements) sont maintenant en place.
 - L'équilibrage (bazar, agressions, personnages) n'a pas encore été éprouvé par de vraies parties complètes.
 - Aucun test automatisé dans le dépôt : la validation se fait à la main dans le navigateur.
 
