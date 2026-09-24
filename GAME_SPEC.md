@@ -22,7 +22,7 @@ Public visé : des amis de l'auteur, sur navigateur, en quelques minutes de part
 | Fichiers de jeu | `index.html` (structure), `style.css` (apparence), `data.js` (contenu), `game.js` (moteur) — voir §12 |
 | Dépendances | **aucune** — pas de framework, pas de build, pas de serveur. Seules les polices (Bebas Neue, Inter) viennent de Google Fonts ; sans internet, la police système prend le relais |
 | Lancement | double-clic sur `index.html`, ou n'importe quel hébergement statique — les 4 fichiers doivent rester dans le même dossier |
-| Assets | `fonds/` (6 fonds + `carte.jpg`, la carte illustrée), `perso/` (3 avatars), `images/` (images dessinées, voir §12 bis), `musique/` (3 MP3, ~14 Mo) |
+| Assets | `fonds/` (6 fonds + `carte.jpg`, la carte illustrée), `perso/` (3 avatars), `images/` (images dessinées, voir §12 bis), `musique/` (3 MP3 compressés, ~5,4 Mo) |
 | Persistance | `localStorage`, clé `migrator-save` |
 | Sons d'action | générés à la volée via l'API Web Audio — aucun fichier son |
 | Dépôt | https://github.com/ikono85/Migrator |
@@ -522,7 +522,6 @@ Un événement s'écrit `{ ico, img?, col, txt, fx, snd }` (immédiat) ou `{ cho
 - Les trois couleurs changent l'apparence (avatar, fonds, musique, accent, image de famille) mais pas les règles.
 - L'échec est plus probable que la réussite au début : avec langue 1 et réseau 0, une visite à la préfecture réussit à 7,5 %. C'est voulu, mais les premiers jours peuvent sembler longs.
 - Une seule fin heureuse. Retourner au pays ou devenir bénévole à son tour ne sont pas implémentés.
-- Les musiques pèsent 14 Mo, ce qui est lourd pour un premier chargement en ligne.
 - Les textes dessinés sur la carte (« 150 € pour louer », « Récépissé requis ») restent affichés quand ils ne s'appliquent plus.
 - Pas de vraie version téléphone : le bandeau est haut, les ronds de la carte sont petits au doigt (prévue plus tard).
 - Les images mélangent photos et dessins, mais toutes les images prévues (avatars, médaillons d'événements) sont maintenant en place.
